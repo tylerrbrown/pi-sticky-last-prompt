@@ -41,6 +41,7 @@
  *     stops working but nothing else breaks.
  */
 
+import { stripVTControlCharacters } from "node:util";
 import {
 	type ExtensionAPI,
 	SkillInvocationMessageComponent,
@@ -100,10 +101,8 @@ type AltScreen = TUI & {
 // ═══════════════════════════════════════════════════════════════
 
 const WIDGET_ID = "sticky-last-prompt";
-const PIN_ICON = "\uf007"; // nf-fa-thumb_tack, same glyph other pi pins use
-
 function collapseWhitespace(text: string): string {
-	return text.replace(/\s+/g, " ").trim();
+	return stripVTControlCharacters(text).replace(/\s+/g, " ").replace(/\p{Cc}/gu, "").trim();
 }
 
 function padToWidth(text: string, width: number): string {
@@ -262,12 +261,12 @@ class PinBar implements Component {
 	render(width: number): string[] {
 		const theme = this.theme;
 		const text = this.getText();
-		if (!theme || !text) {
+		if (!theme || !text || width < 3) {
 			this.renderedRows = 0;
 			return [];
 		}
-		const label = truncateToWidth(text, Math.max(0, width - 4), "…");
-		const line = ` ${theme.fg("accent", PIN_ICON)} ${theme.fg("text", label)}`;
+		const label = truncateToWidth(text, width - 2, "…");
+		const line = `${theme.fg("accent", ">")} ${theme.fg("text", label)}`;
 		this.renderedRows = 1;
 		return [theme.bg("selectedBg", padToWidth(line, width))];
 	}
@@ -359,7 +358,8 @@ export default function stickyLastPrompt(pi: ExtensionAPI): void {
 		const limit = sv.scrollTop;
 		let selected: UserAnchor | undefined;
 		for (const anchor of anchors) {
-			if (anchor.start < limit) selected = anchor;
+			if (anchor.start <= limit) selected = anchor;
+			else break;
 		}
 		// Still has rows on screen → hide instead of duplicating them.
 		if (selected && selected.end > limit) return undefined;
@@ -482,6 +482,7 @@ export default function stickyLastPrompt(pi: ExtensionAPI): void {
 		// Widget factory runs once per session: wires renderer refs, theme,
 		// patches, and overlay; the pin itself resolves per paint.
 		ctx.ui.setWidget(WIDGET_ID, (tui, theme) => {
+			if (tui.mode !== "fullscreen") return EMPTY_COMPONENT;
 			const screen = tui as AltScreen;
 			altScreen = screen;
 			bar.setTheme(theme);
@@ -492,6 +493,7 @@ export default function stickyLastPrompt(pi: ExtensionAPI): void {
 	});
 
 	pi.on("session_shutdown", async (_event, ctx) => {
+		if (ctx.mode !== "tui" || !ctx.hasUI) return;
 		ctx.ui.setWidget(WIDGET_ID, undefined);
 		uninstallRendererPatches();
 		overlay?.hide();

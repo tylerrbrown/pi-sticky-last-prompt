@@ -1,67 +1,13 @@
-# pi-collections
+# Sticky Last Prompt
 
-A **development-only npm workspace** that collects [pi](https://github.com/earendil-works/pi) extensions. Each directory under `extensions/` is an independent, distributable pi package — its own `package.json` with a `pi` manifest and the `pi-package` keyword (published on npm as `pi-<name>`).
+The maintained fork of [tangentyh/pi-collections](https://github.com/tangentyh/pi-collections/tree/main/extensions/sticky-last-prompt) ships the fullscreen prompt extension only. Its `> ` preview appears once the entire prompt for the current turn scrolls above the viewport. Click the preview to jump back. It does not log prompts or perform network, filesystem, or subprocess operations at runtime. Regular mode does not install an overlay or patch the renderer.
 
-## What's here
+Use a reviewed full commit SHA from the `deployment` branch in Pi user settings. Do not install the upstream workspace root or the fork's upstream-tracking `main` branch.
 
-| Package | Description |
-|---------|-------------|
-| [pi-focus-aware-blinking-cursor](extensions/focus-aware-blinking-cursor-and-border) | Blinking cursor when focused; border dims when the terminal loses focus |
-| [pi-scroll-speed](extensions/scroll-speed) | Lines scrolled per mouse-wheel notch in pi fullscreen mode |
-| [pi-footer-template](extensions/footer-template) | Render pi's footer from a configurable string template (the default mirrors the built-in footer plus the right-aligned account balance and absolute context-token usage); time and response throughput are reported in a notification configured the same way; multi-provider account balance mirrors pi-tidy-footer, plus provider quota status for Codex/Claude OAuth subscriptions mirrors pi-usage/pi-fancy-footer |
-| [pi-deepseek-pricing-by-time](extensions/deepseek-pricing-by-time) | Time-of-day-aware DeepSeek cost accounting: re-prices every DeepSeek assistant message with the official peak/off-peak rates in effect at the message's UTC timestamp, so session totals, the footer, the statusline cost segment, and exports match what DeepSeek bills |
-| [pi-sticky-last-prompt](extensions/sticky-last-prompt) | Pins the latest user message that has scrolled completely above the viewport top as a one-line bar at the top of the fullscreen TUI (while a prompt is still crossing the top edge the bar hides rather than duplicate it); left-clicking the bar scrolls the transcript to that message |
-| [pi-working-timer](extensions/working-timer) | Appends live elapsed time to pi's working indicator (`Working · 1m 04s`) for one clock per agent run — prompt submission through `agent_settled`, so tool rounds, retries and compaction retries are included; zero configuration, zero runtime dependencies |
-| [@tangentyh/pi-auto-rename](extensions/auto-rename) | Fork of `@normful/pi-auto-name`: auto-generates a session name and window name from the conversation and applies the window name to the tmux window, herdr pane/tab, and zellij pane/tab the process runs in; deliberately diverges from upstream — see the package README |
-| [pi-system-prompt-trim](extensions/system-prompt-trim) | Trims pi's own `docs` section out of every request: its bullets — doc paths, topic index, reading rules, variant caveats — are transcribed verbatim into an on-demand `pi-docs` skill generated at startup, leaving the section blank (pi 1.3+). The only section it touches |
+Regenerate the committed JavaScript from the repository root with Node 24 (no package install required):
 
-Each package has its own `README.md` and `LICENSE` (MIT) in its directory — click the name to explore.
-
-## Requirements
-
-- **pi** 1.4+ — the extensions target the pi version this workspace is developed against (see `devDependencies`); pi 1.4 ships with npm as `@earendil-works/pi-coding-agent`
-- **Node.js 18+** — packages are ESM (`"type": "module"`)
-- **npm 7+** — required for the `workspaces` feature used by this repo
-- **TypeScript 5.5+** (dev only) — for `npm run typecheck`
-
-## Installation
-
-The repo's root declares no `pi` manifest, and pi's git sources install whatever a repository's root declares — so there is no `git:.../pi-collections/extensions/...` form. Pick the option that fits:
-
-**Local path** — clone the repo and install the extension's directory. `pi install` records the path in `~/.pi/agent/settings.json` without copying, so edits take effect in a running pi with `/reload`:
-
-```bash
-git clone <this repo>
-pi install ./extensions/scroll-speed
+```sh
+node --disable-warning=ExperimentalWarning -e "const fs=require('node:fs'); const {stripTypeScriptTypes}=require('node:module'); fs.mkdirSync('dist',{recursive:true}); fs.writeFileSync('dist/sticky-last-prompt.js',stripTypeScriptTypes(fs.readFileSync('src/sticky-last-prompt.ts','utf8').replace(/\r\n/g,'\n'),{mode:'transform'}))"
 ```
 
-**npm** — publish an extension's own directory to npm, then install it by name:
-
-```bash
-cd extensions/scroll-speed
-npm publish
-pi install npm:pi-scroll-speed
-```
-
-**Single session** — skip installation and load one extension at startup:
-
-```bash
-pi -e ./extensions/scroll-speed/scroll-speed.ts
-```
-
-To load an extension into an already-running pi, `pi install` it first (or drop it into `~/.pi/agent/extensions/` or `.pi/extensions/`), then run `/reload` inside pi to hot-reload it without restarting. Files in the auto-discovered locations are re-read on every `/reload`, so edits apply immediately.
-
-## Development
-
-```bash
-npm install            # once, installs the whole workspace
-npm run typecheck      # typecheck all extensions from the root
-npm test               # check:packages, then every extension's suite
-npm run check:packages # manifest + CHANGELOG rules pi's update view relies on
-npm run start:scroll-speed   # launch pi with one extension loaded
-                         # (same as `pi -e ./extensions/<name>/<name>.ts`)
-```
-
-## Security
-
-> Extensions run with your full system permissions and can execute arbitrary code. Only install from sources you trust.
+The overlay covers one transcript row and uses private Pi fullscreen layout and mouse interfaces. Recheck display, scrolling, and click-to-jump when changing Pi or the extension.
